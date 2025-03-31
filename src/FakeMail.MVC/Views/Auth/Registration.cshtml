@@ -1,0 +1,42 @@
+﻿@model FakeMail.MVC.Dtos.RegistrationDto
+
+@{
+ViewData["Title"] = "Регистрация";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm mt-5">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Регистрация</h2>
+
+                    <!-- Блок для отображения ошибок -->
+                    <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+                    <form asp-controller="Auth" asp-action="Registration" method="post">
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">Email:</label>
+                            <input asp-for="Email" class="form-control" placeholder="Введите email" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label">Пароль:</label>
+                            <input asp-for="Password" type="password" class="form-control" placeholder="Введите пароль" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <a asp-controller="Auth" asp-action="Login" class="small">Уже есть аккаунт? Войти</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,51 @@
+﻿services:
+  mongo:
+    image: mongo:4.4.23
+    container_name: mongo-db
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongoUser
+      MONGO_INITDB_ROOT_PASSWORD: mongoPass
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-data:/data/db
+    command:
+      - --bind_ip_all
+      - --auth
+    networks:
+      - shared-network
+
+  mongo-express:
+    image: mongo-express:1.0.0-alpha.4
+    container_name: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: mongoUser
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mongoPass
+      ME_CONFIG_MONGODB_SERVER: mongo
+    depends_on:
+      - mongo
+    networks:
+      - shared-network
+
+  fake-mail.mvc:
+    container_name: fakemail-mvc
+    restart: always
+    ports:
+      - 12000:8080
+    build:
+      dockerfile: FakeMail.MVC/Dockerfile
+    depends_on:
+      - mongo
+    networks:
+      - shared-network
+
+volumes:
+  mongo-data:
+    
+networks:
+  shared-network:
+    external: true

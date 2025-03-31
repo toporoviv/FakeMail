@@ -1,0 +1,236 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model IEnumerable<FakeMail.Domain.Entities.Mails.MailMessage>
+@{
+ViewData["Title"] = "Почта";
+var userEmail = User.Identity?.Name;
+}
+
+<h2 class="mb-4 d-flex justify-content-between align-items-center">
+    <span>Входящие сообщения</span>
+    <span class="text-muted small">Пользователь: @userEmail</span>
+</h2>
+
+<!-- Раздел с сообщениями -->
+<div class="card mb-4" style="max-height: 500px; overflow-y: auto;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Сообщения</span>
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#composeModal">Написать</button>
+    </div>
+    <form id="deleteForm" method="post" asp-controller="Home" asp-action="DeleteMails">
+        <table class="table table-striped mb-0">
+            <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th>От кого</th>
+                <th>Заголовок</th>
+                <th>Сообщение</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var mail in Model)
+            {
+            <tr class="clickable-row" data-id="@mail.Id">
+                <td><input type="checkbox" name="selectedIds" value="@mail.Id"></td>
+                <td>@mail.SenderEmail</td>
+                <td>@mail.Title</td>
+                <td>
+                            <span class="message-preview">
+                                @(mail.Message.Length > 15 ? mail.Message.Substring(0, 15) + "..." : mail.Message)
+                            </span>
+                </td>
+            </tr>
+            }
+            </tbody>
+        </table>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-danger">Удалить выбранные</button>
+        </div>
+    </form>
+</div>
+
+<!-- Модальное окно для отправки сообщения -->
+<div class="modal fade" id="composeModal" tabindex="-1" aria-labelledby="composeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="composeModalLabel">Новое сообщение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-controller="Home" asp-action="SendMail" enctype="multipart/form-data" class="row g-3">
+                    <div class="col-12">
+                        <label for="ReceiverEmail" class="form-label">Кому:</label>
+                        <input type="email" class="form-control" id="ReceiverEmail" name="ReceiverEmail" required />
+                    </div>
+                    <div class="col-12">
+                        <label for="Title" class="form-label">Заголовок:</label>
+                        <input type="text" class="form-control" id="Title" name="Title" required />
+                    </div>
+                    <div class="col-12">
+                        <label for="Message" class="form-label">Сообщение:</label>
+                        <textarea class="form-control" id="Message" name="Message" rows="4" required></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Прикрепить файлы (опционально):</label>
+                        <div id="fileInputsContainer">
+                            <!-- Первое поле загрузки -->
+                            <div class="input-group mb-2">
+                                <input
+                                    type="file"
+                                    class="form-control"
+                                    name="Attachments"
+                                    accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                />
+                                <button type="button" class="btn btn-outline-danger remove-file-btn" style="display: none;">Удалить</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mb-2" id="addFileInput">Добавить файл</button>
+                        <small class="text-muted">Макс. размер файла: 5MB</small>
+                        <div id="fileErrors" class="text-danger small"></div>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">Отправить</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра деталей -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Подробная информация</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>От кого:</strong> <span id="detailsEmail"></span></p>
+                <p><strong>Заголовок:</strong> <span id="detailsTitle"></span></p>
+                <p><strong>Сообщение:</strong> <span id="detailsMessage"></span></p>
+                <p><strong>Прикрепленные файлы:</strong></p>
+                <ul id="detailsAttachments" class="list-unstyled"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const mailsData = @Html.Raw(Json.Serialize(Model));
+
+    // Обработчик для строк таблицы
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const mailId = row.dataset.id;
+            const mail = mailsData.find(m => m.id === mailId);
+
+            if (mail) {
+                document.getElementById('detailsEmail').textContent = mail.senderEmail;
+                document.getElementById('detailsTitle').textContent = mail.title;
+                document.getElementById('detailsMessage').textContent = mail.message;
+
+                // Отображение прикрепленных файлов
+                const attachmentsList = document.getElementById('detailsAttachments');
+                attachmentsList.innerHTML = '';
+
+                if (mail.attachments && mail.attachments.length > 0) {
+                    mail.attachments.forEach(attachment => {
+                        const li = document.createElement('li');
+                        const link = document.createElement('a');
+                        link.href = `/Home/DownloadFile?mailId=${mail.id}&fileName=${encodeURIComponent(attachment.fileName)}`;
+                        link.textContent = attachment.fileName;
+                        link.className = 'btn btn-sm btn-outline-primary me-2 mb-2';
+                        li.appendChild(link);
+                        attachmentsList.appendChild(li);
+                    });
+                } else {
+                    attachmentsList.innerHTML = '<small>Нет прикрепленных файлов</small>';
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                modal.show();
+            }
+        });
+    });
+
+    // Обработчик для чекбокса "Выбрать все"
+    document.getElementById('selectAll').addEventListener('change', (event) => {
+        document.querySelectorAll('input[name="selectedIds"]').forEach(checkbox => {
+            checkbox.checked = event.target.checked;
+        });
+    });
+
+    // Добавление нового поля загрузки файла
+    document.getElementById('addFileInput').addEventListener('click', () => {
+        const container = document.getElementById('fileInputsContainer');
+        const newInputGroup = document.createElement('div');
+        newInputGroup.className = 'input-group mb-2';
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.name = 'Attachments';
+        fileInput.className = 'form-control';
+        fileInput.setAttribute('accept', '.txt,.pdf,.doc,.docx,.jpg,.jpeg,.png');
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn btn-outline-danger remove-file-btn';
+        removeButton.textContent = 'Удалить';
+
+        // Удаление поля при нажатии на кнопку "Удалить"
+        removeButton.addEventListener('click', () => {
+            container.removeChild(newInputGroup);
+        });
+
+        newInputGroup.appendChild(fileInput);
+        newInputGroup.appendChild(removeButton);
+        container.appendChild(newInputGroup);
+
+        // Показываем кнопку "Удалить" для всех полей, кроме первого
+        document.querySelectorAll('.remove-file-btn').forEach(btn => {
+            btn.style.display = 'inline-block';
+        });
+    });
+
+    // Валидация файлов перед отправкой
+    document.querySelector('form').addEventListener('submit', async (e) => {
+        const fileInputs = document.querySelectorAll('#fileInputsContainer input[type="file"]');
+        const errorsContainer = document.getElementById('fileErrors');
+        errorsContainer.innerHTML = '';
+
+        for (const fileInput of fileInputs) {
+            const files = fileInput.files;
+            if (files.length === 0) continue; // Пропускаем пустые поля
+
+            const file = files[0];
+            if (file.size > 5242880) { // 5MB в байтах
+                errorsContainer.innerHTML = `Файл слишком большой: ${file.name}`;
+                e.preventDefault();
+                return;
+            }
+
+            const allowedTypes = [
+                'text/plain',
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'image/jpeg',
+                'image/png'
+            ];
+
+            if (!allowedTypes.includes(file.type)) {
+                errorsContainer.innerHTML = `Недопустимый формат файла: ${file.name}`;
+                e.preventDefault();
+                return;
+            }
+        }
+    });
+</script>
+}
