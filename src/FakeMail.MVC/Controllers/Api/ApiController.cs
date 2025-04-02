@@ -1,4 +1,6 @@
 ﻿using System.Text.Json.Serialization;
+using FakeMail.Domain.Exceptions;
+using FakeMail.MVC.Extensions;
 using FakeMail.Services.Dtos;
 using FakeMail.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +9,7 @@ namespace FakeMail.MVC.Controllers.Api;
 
 [ApiController]
 [Route("api")]
-public class ApiController(IMailService mailService) : ControllerBase
+public class ApiController(IMailService mailService, ILogger<ApiController> logger) : ControllerBase
 {
     [HttpPost("send-message")]
     public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
@@ -17,7 +19,7 @@ public class ApiController(IMailService mailService) : ControllerBase
             var senderEmail = await mailService.GetMailByTokenAsync(request.Token);
 
             var tasks = new List<Task>();
-            
+
             foreach (var receiverEmail in request.ReceiverEmails)
             {
                 tasks.Add(Task.Run(async () =>
@@ -31,9 +33,14 @@ public class ApiController(IMailService mailService) : ControllerBase
 
             return Ok();
         }
+        catch (ExceptionWithStatusCode e)
+        {
+            return e.Handle();
+        }
         catch (Exception e)
         {
-            return BadRequest(e.Message);
+            logger.LogError(e.Message);
+            return BadRequest("Что то пошло не так");
         }
     }
 
@@ -42,24 +49,29 @@ public class ApiController(IMailService mailService) : ControllerBase
     {
         try
         {
-            if (!Request.Headers.TryGetValue("X-Token", out var tokenHeader) 
+            if (!Request.Headers.TryGetValue("X-Token", out var tokenHeader)
                 || string.IsNullOrWhiteSpace(tokenHeader))
             {
                 return BadRequest("Token is missing in the header.");
             }
 
             var token = tokenHeader.ToString();
-            
+
             var mail = await mailService.GetMailByTokenAsync(token);
-            
+
             return Ok(new GetEmailByTokenResponse
             {
                 Email = mail.Email
             });
         }
+        catch (ExceptionWithStatusCode e)
+        {
+            return e.Handle();
+        }
         catch (Exception e)
         {
-            return BadRequest(e.Message);
+            logger.LogError(e.Message);
+            return BadRequest("Что то пошло не так");
         }
     }
 }
