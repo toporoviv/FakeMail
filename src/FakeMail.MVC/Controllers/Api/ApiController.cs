@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using FakeMail.Services.Dtos;
 using FakeMail.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -76,12 +77,6 @@ public class SendMessageRequest
 
     [JsonPropertyName("receiverEmails")] 
     public string[] ReceiverEmails { get; init; } = [];
-}
-
-public class GetEmailByTokenRequest
-{
-    [JsonPropertyName("token")]
-    public required string Token { get; init; }
 }
 
 public class GetEmailByTokenResponse

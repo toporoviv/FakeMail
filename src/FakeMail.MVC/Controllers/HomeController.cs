@@ -2,6 +2,7 @@ using System.Diagnostics;
 using FakeMail.MVC.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using FakeMail.MVC.Models;
+using FakeMail.Services.Dtos;
 using FakeMail.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,9 +14,19 @@ public class HomeController(IMailService mailService) : Controller
 {
     public async Task<IActionResult> Index()
     {
-        var email = User.Identity!.Name!;
-        var mailMessages = await mailService.GetMailMessagesByEmailAsync(email);
-        return View(mailMessages);
+        try
+        {
+            var email = User.Identity!.Name!;
+            var currentMail = await mailService.GetMailByEmailAsync(email);
+            var mailMessages = await mailService.GetMailMessagesByEmailAsync(email);
+
+            ViewData["Token"] = currentMail.Token;
+            return View(mailMessages);
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
     }
     
     [HttpPost]
@@ -48,7 +59,8 @@ public class HomeController(IMailService mailService) : Controller
         
         foreach (var file in request.Attachments)
         {
-            if (file.Length > 5 * 1024 * 1024) // 5 мб
+            var fiveMegabytes = 5 * 1024 * 1024;
+            if (file.Length > fiveMegabytes)
                 ModelState.AddModelError("", $"Файл {file.FileName} слишком большой");
         
             var allowedTypes = new[] { "txt", "pdf", "doc", "docx", "jpg", "jpeg", "png" };
