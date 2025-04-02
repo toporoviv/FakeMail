@@ -93,7 +93,7 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseBody = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Invalid token", responseBody);
+        Assert.Contains("Что то пошло не так", responseBody);
 
         _mockMailService
             .Verify(service => service.GetMailByTokenAsync(request.Token, CancellationToken.None), Times.Once);
@@ -110,9 +110,10 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
             .ReturnsAsync(new Mail { Email = expectedEmail, Password = "pass", Token = token });
 
         var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Token", token);
 
         // Act
-        var response = await client.GetAsync($"/api/get-email-by-token?token={token}");
+        var response = await client.GetAsync($"/api/get-email-by-token");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -129,15 +130,16 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // Arrange
         var token = "invalid-token";
-        var errorMessage = "Invalid token.";
+        var errorMessage = "Что то пошло не так";
 
         _mockMailService.Setup(service => service.GetMailByTokenAsync(token, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception(errorMessage));
 
         var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Token", token);
 
         // Act
-        var response = await client.GetAsync($"/api/get-email-by-token?token={token}");
+        var response = await client.GetAsync("/api/get-email-by-token");
 
         // Assert
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);

@@ -1,23 +1,25 @@
-﻿using FakeMail.Domain.Entities.Mails;
+﻿using System.Net;
+using FakeMail.Domain.Entities.Mails;
+using FakeMail.Domain.Exceptions;
 using FakeMail.Repositories.Dtos;
+using FakeMail.Repositories.Extensions;
 using FakeMail.Repositories.Interfaces;
 using FakeMail.Repositories.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
 namespace FakeMail.Repositories.Implementations;
 
-internal class MailMessageRepository(IOptions<MongoDbSettings> mongoDbSettings) : MongoDbBase(mongoDbSettings),
+internal class MailMessageRepository(
+    IOptions<MongoDbSettings> mongoDbSettings, ILogger<IMailMessageRepository> logger) : MongoDbBase(mongoDbSettings),
     IMailMessageRepository
 {
     private const string CollectionName = "mail_messages";
     
     public async Task<MailMessage> CreateAsync(CreateMailMessageDto dto, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Message);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.ReceiverEmail);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.SenderEmail);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Title);
+        dto.ShouldBeValid(logger);
 
         var mailMessage = new MailMessage
         {
@@ -70,7 +72,11 @@ internal class MailMessageRepository(IOptions<MongoDbSettings> mongoDbSettings) 
 
     public async Task<MailMessage?> GetAsync(string id, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (string.IsNullOrWhiteSpace(id))
+        {
+           logger.LogError("Id не может быть пустым или равен null");
+            throw new ExceptionWithStatusCode("Что то пошло не так", HttpStatusCode.BadRequest);
+        }
 
         var filter = Builders<MailMessage>.Filter.Eq(mailMessage => mailMessage.Id, id);
 
@@ -82,9 +88,7 @@ internal class MailMessageRepository(IOptions<MongoDbSettings> mongoDbSettings) 
 
     public async Task UpdateAsync(UpdateMailMessageDto dto, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.ReceiverEmail);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.SenderEmail);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Message);
+        dto.ShouldBeValid(logger);
 
         var filter = Builders<MailMessage>.Filter.And(
             Builders<MailMessage>.Filter.Eq(mailMessage => mailMessage.ReceiverEmail, dto.ReceiverEmail),
@@ -102,7 +106,11 @@ internal class MailMessageRepository(IOptions<MongoDbSettings> mongoDbSettings) 
 
     public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            logger.LogError("Id не может быть пустым или равен null");
+            throw new ExceptionWithStatusCode("Что то пошло не так", HttpStatusCode.BadRequest);
+        }
 
         var filter = Builders<MailMessage>.Filter.Eq(mailMessage => mailMessage.Id, id);
         
