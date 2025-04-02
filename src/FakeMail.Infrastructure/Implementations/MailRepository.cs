@@ -56,7 +56,8 @@ internal class MailRepository(
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            throw new ExceptionWithStatusCode("Email не должно быть пустым или равным null", HttpStatusCode.BadRequest);
+            logger.LogError("Email не должно быть пустым или равным null");
+            throw new ExceptionWithStatusCode("Что то пошло не так", HttpStatusCode.BadRequest);
         }
 
         var filter = Builders<Mail>.Filter.Eq(mail => mail.Email, email);
@@ -71,7 +72,8 @@ internal class MailRepository(
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            throw new ExceptionWithStatusCode("Email не должно быть пустым или равным null", HttpStatusCode.BadRequest);
+            logger.LogError("Email не должно быть пустым или равным null");
+            throw new ExceptionWithStatusCode("Что то пошло не так", HttpStatusCode.BadRequest);
         }
         
         dto.ShouldBeValid(logger);
