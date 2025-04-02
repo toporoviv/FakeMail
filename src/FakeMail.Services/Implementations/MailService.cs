@@ -47,6 +47,13 @@ internal class MailService(
         ArgumentException.ThrowIfNullOrWhiteSpace(dto.Sender);
         ArgumentException.ThrowIfNullOrWhiteSpace(dto.Title);
         ArgumentException.ThrowIfNullOrWhiteSpace(dto.Receiver);
+
+        var receiver = await mailRepository.GetAsync(dto.Receiver, cancellationToken);
+
+        if (receiver is null)
+        {
+            throw new Exception($"Пользователь с email={dto.Receiver} не найден");
+        }
         
         var attachments = new List<FileAttachment>();
 
