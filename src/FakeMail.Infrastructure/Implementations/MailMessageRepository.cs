@@ -74,7 +74,8 @@ internal class MailMessageRepository(
     {
         if (string.IsNullOrWhiteSpace(id))
         {
-            throw new ExceptionWithStatusCode("Id не может быть пустым или равен null", HttpStatusCode.BadRequest);
+           logger.LogError("Id не может быть пустым или равен null");
+            throw new ExceptionWithStatusCode("Что то пошло не так", HttpStatusCode.BadRequest);
         }
 
         var filter = Builders<MailMessage>.Filter.Eq(mailMessage => mailMessage.Id, id);
@@ -107,7 +108,8 @@ internal class MailMessageRepository(
     {
         if (string.IsNullOrWhiteSpace(id))
         {
-            throw new ExceptionWithStatusCode("Id не может быть пустым или равен null", HttpStatusCode.BadRequest);
+            logger.LogError("Id не может быть пустым или равен null");
+            throw new ExceptionWithStatusCode("Что то пошло не так", HttpStatusCode.BadRequest);
         }
 
         var filter = Builders<MailMessage>.Filter.Eq(mailMessage => mailMessage.Id, id);

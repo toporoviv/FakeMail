@@ -1,29 +1,37 @@
-﻿using System.Security.Claims;
+﻿using System.Net;
+using System.Security.Claims;
 using FakeMail.Domain.Entities.Mails;
+using FakeMail.Domain.Exceptions;
 using FakeMail.Repositories.Dtos;
 using FakeMail.Repositories.Interfaces;
 using FakeMail.Services.Dtos;
+using FakeMail.Services.Extensions;
 using FakeMail.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace FakeMail.Services.Implementations;
 
-internal class AccountService(IMailRepository mailRepository) : IAuthService, IRegistrationService
+internal class AccountService(
+    IMailRepository mailRepository,
+    ILogger<IAuthService> authLogger,
+    ILogger<IRegistrationService> registrationLogger) : IAuthService, IRegistrationService
 {
     public async Task<ClaimsIdentity> AuthAsync(AuthDto dto, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Email);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Password);
+        dto.ShouldBeValid(authLogger);
 
         var mail = await mailRepository.GetAsync(dto.Email, cancellationToken);
                 
         if (mail is null)
         {
-            throw new Exception("Неправильный логин или пароль");
+            authLogger.LogError($"Пользователь с указанным email={dto.Email} не найден");
+            throw new ExceptionWithStatusCode("Пользователь с указанным email не найден", HttpStatusCode.NotFound);
         }
 
         if (mail.Password != dto.Password)
         {
-            throw new Exception("Неправильный логин или пароль");
+            authLogger.LogError($"{mail.Password}!={dto.Password}");
+            throw new ExceptionWithStatusCode("Неправильный логин или пароль", HttpStatusCode.BadRequest);
         }
 
         return Authenticate(mail);
@@ -33,14 +41,14 @@ internal class AccountService(IMailRepository mailRepository) : IAuthService, IR
         RegistrationDto dto,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Email);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Password);
+        dto.ShouldBeValid(registrationLogger);
 
         var mail = await mailRepository.GetAsync(dto.Email, cancellationToken);
 
         if (mail is not null)
         {
-            throw new Exception("Данная почта уже существует");
+            registrationLogger.LogError($"Почта {dto.Email} уже существует");
+            throw new ExceptionWithStatusCode("Данная почта уже существует", HttpStatusCode.BadRequest);
         }
 
         var createdMail = await mailRepository
