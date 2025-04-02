@@ -1,16 +1,17 @@
 ﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
 @model IEnumerable<FakeMail.Domain.Entities.Mails.MailMessage>
 @{
-ViewData["Title"] = "Почта";
-var userEmail = User.Identity?.Name;
+    ViewData["Title"] = "Почта";
+    var userEmail = User.Identity?.Name;
 }
-
 <h2 class="mb-4 d-flex justify-content-between align-items-center">
     <span>Входящие сообщения</span>
-    <span class="text-muted small">Пользователь: @userEmail</span>
+    <div class="text-end small text-muted">
+        <div>Пользователь: @userEmail</div>
+        <div class="text-muted" style="font-size: 0.6rem;">Токен: @ViewData["Token"]</div>
+    </div>
 </h2>
 
-<!-- Раздел с сообщениями -->
 <div class="card mb-4" style="max-height: 500px; overflow-y: auto;">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Сообщения</span>
@@ -29,16 +30,16 @@ var userEmail = User.Identity?.Name;
             <tbody>
             @foreach (var mail in Model)
             {
-            <tr class="clickable-row" data-id="@mail.Id">
-                <td><input type="checkbox" name="selectedIds" value="@mail.Id"></td>
-                <td>@mail.SenderEmail</td>
-                <td>@mail.Title</td>
-                <td>
-                            <span class="message-preview">
+                <tr>
+                    <td><input type="checkbox" name="selectedIds" value="@mail.Id" class="select-checkbox"></td>
+                    <td>@mail.SenderEmail</td>
+                    <td>@mail.Title</td>
+                    <td>
+                            <span class="message-preview clickable-row" data-id="@mail.Id">
                                 @(mail.Message.Length > 15 ? mail.Message.Substring(0, 15) + "..." : mail.Message)
                             </span>
-                </td>
-            </tr>
+                    </td>
+                </tr>
             }
             </tbody>
         </table>
@@ -47,8 +48,6 @@ var userEmail = User.Identity?.Name;
         </div>
     </form>
 </div>
-
-<!-- Модальное окно для отправки сообщения -->
 <div class="modal fade" id="composeModal" tabindex="-1" aria-labelledby="composeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -73,7 +72,6 @@ var userEmail = User.Identity?.Name;
                     <div class="col-12">
                         <label class="form-label">Прикрепить файлы (опционально):</label>
                         <div id="fileInputsContainer">
-                            <!-- Первое поле загрузки -->
                             <div class="input-group mb-2">
                                 <input
                                     type="file"
@@ -97,11 +95,9 @@ var userEmail = User.Identity?.Name;
         </div>
     </div>
 </div>
-
-<!-- Модальное окно для просмотра деталей -->
 <div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl" style="max-width: 95%; max-height: 90vh; margin: auto;">
+        <div class="modal-content" style="max-height: 100%; overflow-y: auto;">
             <div class="modal-header">
                 <h5 class="modal-title" id="detailsModalLabel">Подробная информация</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -109,7 +105,9 @@ var userEmail = User.Identity?.Name;
             <div class="modal-body">
                 <p><strong>От кого:</strong> <span id="detailsEmail"></span></p>
                 <p><strong>Заголовок:</strong> <span id="detailsTitle"></span></p>
-                <p><strong>Сообщение:</strong> <span id="detailsMessage"></span></p>
+                <p><strong>Дата отправки:</strong> <span id="detailsDate"></span></p>
+                <p><strong>Сообщение:</strong></p>
+                <div id="detailsMessage" style="white-space: pre-wrap; word-wrap: break-word;"></div>
                 <p><strong>Прикрепленные файлы:</strong></p>
                 <ul id="detailsAttachments" class="list-unstyled"></ul>
             </div>
@@ -119,118 +117,101 @@ var userEmail = User.Identity?.Name;
         </div>
     </div>
 </div>
-
 @section Scripts {
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    const mailsData = @Html.Raw(Json.Serialize(Model));
-
-    // Обработчик для строк таблицы
-    document.querySelectorAll('.clickable-row').forEach(row => {
-        row.addEventListener('click', () => {
-            const mailId = row.dataset.id;
-            const mail = mailsData.find(m => m.id === mailId);
-
-            if (mail) {
-                document.getElementById('detailsEmail').textContent = mail.senderEmail;
-                document.getElementById('detailsTitle').textContent = mail.title;
-                document.getElementById('detailsMessage').textContent = mail.message;
-
-                // Отображение прикрепленных файлов
-                const attachmentsList = document.getElementById('detailsAttachments');
-                attachmentsList.innerHTML = '';
-
-                if (mail.attachments && mail.attachments.length > 0) {
-                    mail.attachments.forEach(attachment => {
-                        const li = document.createElement('li');
-                        const link = document.createElement('a');
-                        link.href = `/Home/DownloadFile?mailId=${mail.id}&fileName=${encodeURIComponent(attachment.fileName)}`;
-                        link.textContent = attachment.fileName;
-                        link.className = 'btn btn-sm btn-outline-primary me-2 mb-2';
-                        li.appendChild(link);
-                        attachmentsList.appendChild(li);
-                    });
-                } else {
-                    attachmentsList.innerHTML = '<small>Нет прикрепленных файлов</small>';
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const mailsData = @Html.Raw(Json.Serialize(Model));
+        document.querySelectorAll('.clickable-row').forEach(row => {
+            row.addEventListener('click', (event) => {
+                // Исключаем клики по чекбоксам
+                if (event.target.tagName === 'INPUT' && event.target.type === 'checkbox') {
+                    return;
                 }
 
-                const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
-                modal.show();
+                const mailId = row.dataset.id;
+                const mail = mailsData.find(m => m.id === mailId);
+                if (mail) {
+                    document.getElementById('detailsEmail').textContent = mail.senderEmail;
+                    document.getElementById('detailsTitle').textContent = mail.title;
+                    document.getElementById('detailsMessage').textContent = mail.message;
+                    document.getElementById('detailsDate').textContent = new Date(mail.createdAt).toLocaleString();
+
+                    const attachmentsList = document.getElementById('detailsAttachments');
+                    attachmentsList.innerHTML = '';
+                    if (mail.attachments && mail.attachments.length > 0) {
+                        mail.attachments.forEach(attachment => {
+                            const li = document.createElement('li');
+                            const link = document.createElement('a');
+                            link.href = `/Home/DownloadFile?mailId=${mail.id}&fileName=${encodeURIComponent(attachment.fileName)}`;
+                            link.textContent = attachment.fileName;
+                            link.className = 'btn btn-sm btn-outline-primary me-2 mb-2';
+                            li.appendChild(link);
+                            attachmentsList.appendChild(li);
+                        });
+                    } else {
+                        attachmentsList.innerHTML = '<small>Нет прикрепленных файлов</small>';
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                    modal.show();
+                }
+            });
+        });
+        document.getElementById('selectAll').addEventListener('change', (event) => {
+            document.querySelectorAll('input[name="selectedIds"]').forEach(checkbox => {
+                checkbox.checked = event.target.checked;
+            });
+        });
+        document.getElementById('addFileInput').addEventListener('click', () => {
+            const container = document.getElementById('fileInputsContainer');
+            const newInputGroup = document.createElement('div');
+            newInputGroup.className = 'input-group mb-2';
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = 'Attachments';
+            fileInput.className = 'form-control';
+            fileInput.setAttribute('accept', '.txt,.pdf,.doc,.docx,.jpg,.jpeg,.png');
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn btn-outline-danger remove-file-btn';
+            removeButton.textContent = 'Удалить';
+            removeButton.addEventListener('click', () => {
+                container.removeChild(newInputGroup);
+            });
+            newInputGroup.appendChild(fileInput);
+            newInputGroup.appendChild(removeButton);
+            container.appendChild(newInputGroup);
+            document.querySelectorAll('.remove-file-btn').forEach(btn => {
+                btn.style.display = 'inline-block';
+            });
+        });
+        document.querySelector('form').addEventListener('submit', async (e) => {
+            const fileInputs = document.querySelectorAll('#fileInputsContainer input[type="file"]');
+            const errorsContainer = document.getElementById('fileErrors');
+            errorsContainer.innerHTML = '';
+            for (const fileInput of fileInputs) {
+                const files = fileInput.files;
+                if (files.length === 0) continue;
+                const file = files[0];
+                if (file.size > 5242880) {
+                    errorsContainer.innerHTML = `Файл слишком большой: ${file.name}`;
+                    e.preventDefault();
+                    return;
+                }
+                const allowedTypes = [
+                    'text/plain',
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'image/jpeg',
+                    'image/png'
+                ];
+                if (!allowedTypes.includes(file.type)) {
+                    errorsContainer.innerHTML = `Недопустимый формат файла: ${file.name}`;
+                    e.preventDefault();
+                    return;
+                }
             }
         });
-    });
-
-    // Обработчик для чекбокса "Выбрать все"
-    document.getElementById('selectAll').addEventListener('change', (event) => {
-        document.querySelectorAll('input[name="selectedIds"]').forEach(checkbox => {
-            checkbox.checked = event.target.checked;
-        });
-    });
-
-    // Добавление нового поля загрузки файла
-    document.getElementById('addFileInput').addEventListener('click', () => {
-        const container = document.getElementById('fileInputsContainer');
-        const newInputGroup = document.createElement('div');
-        newInputGroup.className = 'input-group mb-2';
-
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.name = 'Attachments';
-        fileInput.className = 'form-control';
-        fileInput.setAttribute('accept', '.txt,.pdf,.doc,.docx,.jpg,.jpeg,.png');
-
-        const removeButton = document.createElement('button');
-        removeButton.type = 'button';
-        removeButton.className = 'btn btn-outline-danger remove-file-btn';
-        removeButton.textContent = 'Удалить';
-
-        // Удаление поля при нажатии на кнопку "Удалить"
-        removeButton.addEventListener('click', () => {
-            container.removeChild(newInputGroup);
-        });
-
-        newInputGroup.appendChild(fileInput);
-        newInputGroup.appendChild(removeButton);
-        container.appendChild(newInputGroup);
-
-        // Показываем кнопку "Удалить" для всех полей, кроме первого
-        document.querySelectorAll('.remove-file-btn').forEach(btn => {
-            btn.style.display = 'inline-block';
-        });
-    });
-
-    // Валидация файлов перед отправкой
-    document.querySelector('form').addEventListener('submit', async (e) => {
-        const fileInputs = document.querySelectorAll('#fileInputsContainer input[type="file"]');
-        const errorsContainer = document.getElementById('fileErrors');
-        errorsContainer.innerHTML = '';
-
-        for (const fileInput of fileInputs) {
-            const files = fileInput.files;
-            if (files.length === 0) continue; // Пропускаем пустые поля
-
-            const file = files[0];
-            if (file.size > 5242880) { // 5MB в байтах
-                errorsContainer.innerHTML = `Файл слишком большой: ${file.name}`;
-                e.preventDefault();
-                return;
-            }
-
-            const allowedTypes = [
-                'text/plain',
-                'application/pdf',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'image/jpeg',
-                'image/png'
-            ];
-
-            if (!allowedTypes.includes(file.type)) {
-                errorsContainer.innerHTML = `Недопустимый формат файла: ${file.name}`;
-                e.preventDefault();
-                return;
-            }
-        }
-    });
-</script>
+    </script>
 }

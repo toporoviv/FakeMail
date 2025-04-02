@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
 using FakeMail.Domain.Entities.Mails;
 using FakeMail.MVC.Controllers.Api;
+using FakeMail.Services.Dtos;
 using FakeMail.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;

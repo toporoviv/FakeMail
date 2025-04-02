@@ -1,6 +1,7 @@
 ﻿using FakeMail.Domain.Entities.Mails;
 using FakeMail.Repositories.Dtos;
 using FakeMail.Repositories.Interfaces;
+using FakeMail.Services.Dtos;
 using FakeMail.Services.Interfaces;
 
 namespace FakeMail.Services.Implementations;
@@ -15,6 +16,18 @@ internal class MailService(
     {
         return await mailMessageRepository
             .GetAsync(new GetMailMessageDto(null, ReceiverEmail: email), cancellationToken);
+    }
+
+    public async Task<Mail> GetMailByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var mail = await mailRepository.GetAsync(email, cancellationToken);
+
+        if (mail is null)
+        {
+            throw new Exception($"Пользователь с email={email} не найден");
+        }
+        
+        return mail;
     }
 
     public async Task<Mail> GetMailByTokenAsync(string token, CancellationToken cancellationToken = default)
