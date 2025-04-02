@@ -1,26 +1,31 @@
-﻿using System.Security.Cryptography;
+﻿using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using FakeMail.Domain.Entities.Mails;
+using FakeMail.Domain.Exceptions;
 using FakeMail.Repositories.Dtos;
+using FakeMail.Repositories.Extensions;
 using FakeMail.Repositories.Interfaces;
 using FakeMail.Repositories.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
 namespace FakeMail.Repositories.Implementations;
 
-internal class MailRepository(IOptions<MongoDbSettings> mongoDbSettings) : MongoDbBase(mongoDbSettings), IMailRepository
+internal class MailRepository(
+    IOptions<MongoDbSettings> mongoDbSettings,
+    ILogger<IMailRepository> logger) : MongoDbBase(mongoDbSettings), IMailRepository
 {
     private const string CollectionName = "mails";
     
     public async Task<Mail> CreateAsync(CreateMailDto dto, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Email);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Password);
+        dto.ShouldBeValid(logger);
 
         if (await GetAsync(dto.Email, cancellationToken) is not null)
         {
-            throw new Exception($"Запись с email={dto.Email} уже существует");
+            throw new ExceptionWithStatusCode("Данный email уже занят", HttpStatusCode.BadRequest);
         }
         
         var mail = new Mail
@@ -49,7 +54,10 @@ internal class MailRepository(IOptions<MongoDbSettings> mongoDbSettings) : Mongo
 
     public async Task<Mail?> GetAsync(string email, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new ExceptionWithStatusCode("Email не должно быть пустым или равным null", HttpStatusCode.BadRequest);
+        }
 
         var filter = Builders<Mail>.Filter.Eq(mail => mail.Email, email);
         
@@ -61,9 +69,12 @@ internal class MailRepository(IOptions<MongoDbSettings> mongoDbSettings) : Mongo
 
     public async Task UpdateAsync(string email, UpdateMailDto dto, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(email);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Email);
-        ArgumentException.ThrowIfNullOrWhiteSpace(dto.Password);
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new ExceptionWithStatusCode("Email не должно быть пустым или равным null", HttpStatusCode.BadRequest);
+        }
+        
+        dto.ShouldBeValid(logger);
 
         var filter = Builders<Mail>.Filter.Eq(mail => mail.Email, email);
 
