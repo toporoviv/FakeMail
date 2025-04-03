@@ -1,6 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 using FakeMail.Domain.Exceptions;
-using FakeMail.MVC.Extensions;
 using FakeMail.Services.Dtos;
 using FakeMail.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -35,12 +34,12 @@ public class ApiController(IMailService mailService, ILogger<ApiController> logg
         }
         catch (ExceptionWithStatusCode e)
         {
-            return e.Handle();
+            return StatusCode((int)e.StatusCode, e.Message);
         }
         catch (Exception e)
         {
             logger.LogError(e.Message);
-            return BadRequest("Что то пошло не так");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Что то пошло не так");
         }
     }
 
@@ -66,12 +65,12 @@ public class ApiController(IMailService mailService, ILogger<ApiController> logg
         }
         catch (ExceptionWithStatusCode e)
         {
-            return e.Handle();
+            return StatusCode((int)e.StatusCode, e.Message);
         }
         catch (Exception e)
         {
             logger.LogError(e.Message);
-            return BadRequest("Что то пошло не так");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Что то пошло не так");
         }
     }
 }
