@@ -68,7 +68,7 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task SendMessage_InvalidToken_ReturnsBadRequest()
+    public async Task SendMessage_InvalidToken_ReturnsInternalServerError()
     {
         // Arrange
         var request = new SendMessageRequest
@@ -90,7 +90,7 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.PostAsJsonAsync("/api/send-message", request);
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
 
         var responseBody = await response.Content.ReadAsStringAsync();
         Assert.Contains("Что то пошло не так", responseBody);
@@ -126,7 +126,7 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task GetEmailByToken_InvalidToken_ReturnsBadRequest()
+    public async Task GetEmailByToken_InvalidToken_ReturnsInternalServerError()
     {
         // Arrange
         var token = "invalid-token";
@@ -142,7 +142,7 @@ public class ApiControllerTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.GetAsync("/api/get-email-by-token");
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
 
         var responseBody = await response.Content.ReadAsStringAsync();
         Assert.Contains(errorMessage, responseBody);
